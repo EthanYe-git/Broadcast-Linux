@@ -48,7 +48,7 @@ int sendBroadcastMessage(struct Message *message)
 	struct BroadcastMessage broadcast;
 	key_t key = ftok(KEY_PATH,66);
 	id = msgget(key,IPC_CREAT | 0666);
-	broadcast.broadcastType = message->from;
+	broadcast.broadcastType = SEND_BROADCAST;
 	strcpy(broadcast.broadcastData, message->data);
 	if(msgsnd(id,(void *)&message,MESSAGE_DATA_LEN,0) < 0)
     {
