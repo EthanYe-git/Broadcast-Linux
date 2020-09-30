@@ -9,7 +9,6 @@
 
 #define KEY_PATH "/home/tym/workspace/run/brodcast"
 #define IPC_WAITFORMESSAGE 0
-#define TEST_APPLICATIONS_COUNT 2
 #define MESSAGE_DATA_LEN 1024
 
 enum {
@@ -18,17 +17,14 @@ enum {
 };
 
 struct BroadcastMessage{
-	long int messageType;
-	char messageData[MESSAGE_DATA_LEN];
+	long int broadcastType;
+	char broadcastData[MESSAGE_DATA_LEN];
 };
 
-int getAppUID();
-
-int onReceiver(struct APP *data, void (*callback)(void))
+int onReceiver(int applicationUID, void (*callback)(void))
 {
     int id = 0;
-	struct BroadcastMessage message;
-    message.messageType = SYSTEM_BROADCAST;
+	struct BroadcastMessage broadcast;
 	key_t key = ftok(KEY_PATH,66);
 	id = msgget(key,IPC_CREAT | 0666);
 	if(id == -1){
@@ -36,17 +32,28 @@ int onReceiver(struct APP *data, void (*callback)(void))
 		return -1;
 	}
     while(1){
-		if(msgrcv(id,(void *)&message, MESSAGE_DATA_LEN, SYSTEM_BROADCAST, IPC_WAITFORMESSAGE) < 0){
+		if(msgrcv(id,(void *)&broadcast, MESSAGE_DATA_LEN, applicationUID, IPC_WAITFORMESSAGE) < 0){
 			printf("Broadcast receiver error \n");
 			return 0;
 		}
         if(callback != NULL)callback();
-		printf("System Broadcast : %s\n", message.messageData);
+		printf("System Broadcast : %s\n", broadcast.broadcastData);
 	}
     return 0;
 }
 
 int sendBroadcastMessage(struct Message *message)
 {
+	int id = 0;
+	struct BroadcastMessage broadcast;
+	key_t key = ftok(KEY_PATH,66);
+	id = msgget(key,IPC_CREAT | 0666);
+	broadcast.broadcastType = message->from;
+	strcpy(broadcast.broadcastData, message->data);
+	if(msgsnd(id,(void *)&message,MESSAGE_DATA_LEN,0) < 0)
+    {
+		printf("send msg error \n");
+		return -1;
+	}
     return 0;
 }
