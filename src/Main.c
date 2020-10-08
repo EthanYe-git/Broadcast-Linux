@@ -7,7 +7,7 @@
 #include "broadcast.h"
 #include "cJSON.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #define KEY_PATH "/home/tym/workspace/run/brodcast"
 #define KEY_PRO_ID 66
 #define IPC_WAITFORMESSAGE 0
@@ -83,6 +83,7 @@ int main()
             handleSpotify(&message);
             break;
         default:
+            //sendBroadcast(&message);
             break;
         }
 	}
@@ -131,7 +132,7 @@ int sendBroadcast(struct Message *message)
     broadcast.broadcastType = message->target;
     strcpy(broadcast.broadcastData, getMsgJson(message));
 
-    printf("info:data : %s\n", broadcast.broadcastData);
+    if(DEBUG)printf("info:data : %s\n", broadcast.broadcastData);
     if(msgsnd(msgID,(void *)&broadcast,MESSAGE_DATA_LEN,0) < 0)
     {
 		printf("send msg error \n");
@@ -155,7 +156,10 @@ int handleSystem(struct Message *message)
         returnMsg.data = "register success";
         sendBroadcast(&returnMsg);
         break;
-    
+    case MESSAGE_TYPE_UNREGISTER:
+        receivers[message->from] = 0;
+        printf("unregister success\n");
+        break;
     default:
         break;
     }
