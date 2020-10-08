@@ -10,6 +10,7 @@ enum AppUID{
 };
 
 enum MessageType{
+    MESSAGE_TYPE_REGISTER = 0x100,
     MESSAGE_TYPE_STRING = 0x101,
     MESSAGE_TYPE_VOLUME = 0x102,
     MESSAGE_TYPE_STATE = 0x103
@@ -17,8 +18,8 @@ enum MessageType{
 
 struct Message
 {
-    long int from;        //sender AppUID
-    long int target;      //receiver AppUID
+    int from;        //sender AppUID
+    int target;      //receiver AppUID
     int type;             //MessageType
     int dataLen;          //broadcast message len
     char *data;           //broadcast message
