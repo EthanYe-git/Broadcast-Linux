@@ -24,13 +24,24 @@ enum {
 	SYSTEM_BROADCAST = 0x102
 };
 
+enum MessageTypeHi{
+    MESSAGE_TYPE_REGISTER = 0x100,
+	MESSAGE_TYPE_UNREGISTER = 0x199
+};
+
 struct BroadcastMessage{
 	long int broadcastType;
 	char broadcastData[MESSAGE_DATA_LEN];
 };
 
+static int CurrentUID = -1;
+
+int getMessage(struct Message *message, char *json);
+char *getMsgJson(struct Message *message);
+
 int onReceiver(int applicationUID, void (*callback)(void))
 {
+	CurrentUID = applicationUID;
     int id = 0;
 	key_t key = ftok(KEY_PATH,KEY_PRO_ID);
 	id = msgget(key,IPC_CREAT | 0666);
@@ -62,6 +73,18 @@ int onReceiver(int applicationUID, void (*callback)(void))
     return 0;
 }
 
+int unReceiver()
+{
+	if(CurrentUID == -1)return -1;
+	struct Message message;
+	message.from = CurrentUID;
+	message.target = APPUID_SYSTEM;
+	message.type = MESSAGE_TYPE_UNREGISTER;
+	message.data = "";
+	sendBroadcastMessage(&message);
+	return 0;
+}
+
 int sendBroadcastMessage(struct Message *message)
 {
 	int id = 0;
@@ -74,21 +97,45 @@ int sendBroadcastMessage(struct Message *message)
 		return 0;
 	}
 	broadcast.broadcastType = SEND_BROADCAST;
-	//create json
-	cJSON *root = cJSON_CreateObject();
-	cJSON_AddItemToObject(root, "f", cJSON_CreateNumber(message->from));
-	cJSON_AddItemToObject(root, "t", cJSON_CreateNumber(message->target));
-	cJSON_AddItemToObject(root, "p", cJSON_CreateNumber(message->type));
-	cJSON_AddItemToObject(root, "l", cJSON_CreateNumber(MESSAGE_DATA_LEN));
-	cJSON_AddItemToObject(root, "m", cJSON_CreateString(message->data));
-	printf("%s\n", cJSON_Print(root));
 
-	strcpy(broadcast.broadcastData, cJSON_Print(root));
+	strcpy(broadcast.broadcastData, getMsgJson(message));
 	if(msgsnd(id,(void *)&broadcast,MESSAGE_DATA_LEN,0) < 0)
     {
 		printf("send msg error \n");
 		return -1;
 	}
-	cJSON_Delete(root);
     return 0;
+}
+
+int getMessage(struct Message *message, char *json)
+{
+    if(!(json && *json))return -1;
+    cJSON *root = cJSON_Parse(json);
+    message->from = cJSON_GetObjectItem(root, BMSG_FROM)->valueint;
+    message->target = cJSON_GetObjectItem(root, BMSG_TARGET)->valueint;
+    message->type = cJSON_GetObjectItem(root, BMSG_TYPE)->valueint;
+    message->dataLen = cJSON_GetObjectItem(root, BMSG_DATALEN)->valueint;
+    strcpy(message->data, cJSON_GetObjectItem(root, BMSG_DATA)->valuestring);
+    cJSON_Delete(root);
+    return 0;
+}
+
+char *getMsgJson(struct Message *message)
+{
+    cJSON *root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "f", cJSON_CreateNumber(message->from));
+	cJSON_AddItemToObject(root, "t", cJSON_CreateNumber(message->target));
+	cJSON_AddItemToObject(root, "p", cJSON_CreateNumber(message->type));
+	cJSON_AddItemToObject(root, "l", cJSON_CreateNumber(MESSAGE_DATA_LEN));
+	cJSON_AddItemToObject(root, "m", cJSON_CreateString(message->data));
+    char *json = strdup(cJSON_Print(root));
+    cJSON_Delete(root);
+    return json;
+}
+
+int main()
+{
+	CurrentUID = APPUID_QPLAY;
+	unReceiver();
+	return 0;
 }
